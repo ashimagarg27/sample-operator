@@ -1,0 +1,7 @@
+apiVersion: multiple.example.com/v1alpha1
+kind: ReplicasOperator
+metadata:
+  name: replicasoperator-sample
+spec:
+  # Add fields here
+  foo: bar
