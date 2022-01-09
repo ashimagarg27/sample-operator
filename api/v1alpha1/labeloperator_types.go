@@ -29,7 +29,8 @@ type LabelOperatorSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of LabelOperator. Edit labeloperator_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Foo string `json:"foo,omitempty"`
+	Label string `json:"label"`
 }
 
 // LabelOperatorStatus defines the observed state of LabelOperator
