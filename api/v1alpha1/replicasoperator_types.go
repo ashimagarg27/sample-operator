@@ -30,7 +30,7 @@ type ReplicasOperatorSpec struct {
 
 	// Foo is an example field of ReplicasOperator. Edit replicasoperator_types.go to remove/update
 	// Foo string `json:"foo,omitempty"`
-	ReplicaCount int `json:"replicas"`
+	ReplicaCount int32 `json:"replicas"`
 }
 
 // ReplicasOperatorStatus defines the observed state of ReplicasOperator

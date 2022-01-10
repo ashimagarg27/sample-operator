@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
+	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,9 +49,53 @@ type LabelOperatorReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *LabelOperatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+	logger.Info("In LabelOperator......")
 
 	// your logic here
+	instance := &multiplev1alpha1.LabelOperator{}
+	err := r.Get(ctx, req.NamespacedName, instance)
+	if err != nil {
+		if k8serr.IsNotFound(err) {
+			// Request object not found, could have been deleted after reconcile request.
+			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
+			// Return and don't requeue
+			logger.Info("LabelOperator resource not found. Ignoring since object must be deleted")
+			return ctrl.Result{}, nil
+		}
+		// Error reading the object.
+		logger.Error(err, "failed to get LabelOperator resource")
+		return ctrl.Result{}, err
+	}
+
+	var pod corev1.Pod
+	if err := r.Get(ctx, req.NamespacedName, &pod); err != nil {
+		if k8serr.IsNotFound(err) {
+			logger.Info("Pod not found")
+			return ctrl.Result{}, nil
+		}
+		logger.Error(err, "unable to fetch Pod")
+		return ctrl.Result{}, err
+	}
+
+	label := instance.Spec.Label
+
+	if pod.Labels == nil {
+		pod.Labels = make(map[string]string)
+	}
+
+	pod.Labels["updatedLabel/Operator"] = label
+	logger.Info("Label Added in Pod", pod.Name, label)
+
+	if err := r.Update(ctx, &pod); err != nil {
+		if k8serr.IsNotFound(err) {
+			logger.Info("Pod not found...Retrying...")
+			return ctrl.Result{Requeue: true}, nil
+		}
+		logger.Error(err, "unable to update Pod")
+		return ctrl.Result{}, err
+	}
+	logger.Info("Pod Lable Added....")
 
 	return ctrl.Result{}, nil
 }
