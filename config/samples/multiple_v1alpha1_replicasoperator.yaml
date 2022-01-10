@@ -2,6 +2,7 @@ apiVersion: multiple.example.com/v1alpha1
 kind: ReplicasOperator
 metadata:
   name: replicasoperator-sample
+  namespace: sample-operator-system
 spec:
   # Add fields here
-  foo: bar
+  replicas: 3

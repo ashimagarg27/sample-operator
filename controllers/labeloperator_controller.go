@@ -50,7 +50,7 @@ type LabelOperatorReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.9.2/pkg/reconcile
 func (r *LabelOperatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)
-	logger.Info("In LabelOperator......")
+	logger.Info("In LabelOperator......", "namespace:", req.Namespace)
 
 	// your logic here
 	instance := &multiplev1alpha1.LabelOperator{}
@@ -68,34 +68,38 @@ func (r *LabelOperatorReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
-	var pod corev1.Pod
-	if err := r.Get(ctx, req.NamespacedName, &pod); err != nil {
-		if k8serr.IsNotFound(err) {
-			logger.Info("Pod not found")
-			return ctrl.Result{}, nil
+	var listOptions = &client.ListOptions{Namespace: req.Namespace}
+	podList := &corev1.PodList{}
+	err = r.List(ctx, podList, listOptions)
+	if err != nil {
+		logger.Info("Pods not found")
+		return ctrl.Result{}, nil
+	}
+	logger.Info("Get PodsList....")
+
+	for ind := range podList.Items {
+		pod := &podList.Items[ind]
+		logger.Info("Pod Found", "name:", pod.Name)
+
+		label := instance.Spec.Label
+
+		if pod.Labels == nil {
+			pod.Labels = make(map[string]string)
 		}
-		logger.Error(err, "unable to fetch Pod")
-		return ctrl.Result{}, err
-	}
 
-	label := instance.Spec.Label
+		pod.Labels["new-label-by-operator"] = label
+		logger.Info("Label Added in Pod", "name:", pod.Name, "label", label)
 
-	if pod.Labels == nil {
-		pod.Labels = make(map[string]string)
-	}
-
-	pod.Labels["updatedLabel/Operator"] = label
-	logger.Info("Label Added in Pod", pod.Name, label)
-
-	if err := r.Update(ctx, &pod); err != nil {
-		if k8serr.IsNotFound(err) {
-			logger.Info("Pod not found...Retrying...")
-			return ctrl.Result{Requeue: true}, nil
+		if err := r.Update(ctx, pod); err != nil {
+			if k8serr.IsNotFound(err) {
+				logger.Info("Pod not found...Retrying...")
+				return ctrl.Result{Requeue: true}, nil
+			}
+			logger.Error(err, "unable to update Pod")
+			return ctrl.Result{}, err
 		}
-		logger.Error(err, "unable to update Pod")
-		return ctrl.Result{}, err
+		logger.Info("Pod Label Added....", "name", pod.Name)
 	}
-	logger.Info("Pod Lable Added....")
 
 	return ctrl.Result{}, nil
 }
